@@ -2,31 +2,38 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "bunny543/algorithm-visualizer:latest"
-        APP_PORT = "90"
+        IMAGE_NAME = 'my-nginx-custom'
+        CONTAINER_NAME = 'nginx8081'
+        HOST_PORT = '8081'
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/PuneetKathpalia/Algo-Visualizer.git'
+                git url: 'https://github.com/PuneetKathpalia/Algo-Visualizer.git', branch: 'main'
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    bat 'echo Building Docker image: %DOCKER_IMAGE%'
-                    bat 'docker build -t %DOCKER_IMAGE% .'
+                    sh "docker build -t ${IMAGE_NAME} ."
                 }
             }
         }
-        stage('Deploy Docker Container') {
+
+        stage('Run Docker Container') {
             steps {
                 script {
-                    bat 'echo Deploying container on port %APP_PORT%'
-                    bat 'docker stop Algorithm-Visualizer || exit 0'
-                    bat 'docker rm Algorithm-Visualizer || exit 0'
-                    bat 'docker run -d -p %APP_PORT%:%APP_PORT% --name Algo-Visualizer %DOCKER_IMAGE%'
+                    // Stop and remove if container already exists
+                    sh """
+                    if docker ps -a --format '{{.Names}}' | grep -q '^${CONTAINER_NAME}$'; then
+                        docker rm -f ${CONTAINER_NAME}
+                    fi
+                    """
+
+                    // Run container on port 8081
+                    sh "docker run -d -p ${HOST_PORT}:80 --name ${CONTAINER_NAME} ${IMAGE_NAME}"
                 }
             }
         }
@@ -34,13 +41,10 @@ pipeline {
 
     post {
         success {
-            script {
-                echo "✅ Pipeline completed successfully!"
-                echo "🌐 Application is running at: http://localhost:${env.APP_PORT}"
-            }
+            echo "Nginx container is running at http://localhost:${HOST_PORT}"
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo 'Pipeline failed. Check logs above.'
         }
     }
 }
