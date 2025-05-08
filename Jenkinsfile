@@ -41,7 +41,7 @@ pipeline {
             }
         }
     }
-
+// yes
     post {
         success {
             echo "✅ App running at: http://localhost:${HOST_PORT}"
